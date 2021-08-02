@@ -14,8 +14,9 @@ library(lubridate)
 library(dplyr)
 
 
-#### User inputs for user script ####
 
+############################
+########## User inputs -----------
 
 #### Setting up directories 
 
@@ -40,6 +41,9 @@ DirFinal2 <- c("Insert lab file path here",
 
 # Select user - change if needed
 user <- 2
+
+############################
+########## Meter -----------
 
 #### Set up metadata and initial tables ####
 #read in first file
@@ -94,19 +98,33 @@ meterQAout <- data.frame(doy=yday(QAdate),
 
 MeterTableO1 <- left_join(meterTable, meterQAout, by=c("doy","year","time"))
 
-
-#### QA/QC ####
+############################
+########## QA/QC -----------
 #add in data flags and QAQC here
 
+
+############################
+########## plots-----------
+plot(MeterTableO1$DY, MeterTableO1$AirTemp,type="l")
+plot(MeterTableO1$DY, MeterTableO1$Precip, pch=19)
+plot(MeterTableO1$DY, MeterTableO1$WindSpeed,type="l")
+plot(MeterTableO1$DY, MeterTableO1$GustSpeed,type="l")
+plot(MeterTableO1$DY, MeterTableO1$VaporPr,type="l")
+#range +- 2 degrees
+plot(MeterTableO1$DY, MeterTableO1$XLevel,type="l")
+plot(MeterTableO1$DY, MeterTableO1$YLevel,type="l")
+
+
+tail(MeterTableO1)
 
 #### Save final tables ####
 
 
-write.table(MeterTableO1,paste0(DirFinal[user],"/meter/meter_weather_data.csv"),sep=",", row.names=FALSE)
-write.table(MeterMeta,paste0(DirFinal[user],"/meter/meter_weather_metadata.csv"),sep=",", row.names=FALSE)
+#write.table(MeterTableO1,paste0(DirFinal[user],"/meter/meter_weather_data.csv"),sep=",", row.names=FALSE)
+#write.table(MeterMeta,paste0(DirFinal[user],"/meter/meter_weather_metadata.csv"),sep=",", row.names=FALSE)
 
-write.table(MeterTableO1,paste0(DirFinal2[user],"\\meter_weather_data.csv"),sep=",", row.names=FALSE)
-write.table(MeterMeta,paste0(DirFinal2[user],"\\meter_weather_metadata.csv"),sep=",", row.names=FALSE)
+#write.table(MeterTableO1,paste0(DirFinal2[user],"\\meter_weather_data.csv"),sep=",", row.names=FALSE)
+#write.table(MeterMeta,paste0(DirFinal2[user],"\\meter_weather_metadata.csv"),sep=",", row.names=FALSE)
 
 
 plot(MeterTableO1$DY, MeterTableO1$AirTemp,type="l")

@@ -12,29 +12,36 @@
 #libraries
 library(lubridate)
 library(dplyr)
+library(ggplot2)
 
 
-
-############################
+########ggplot2############################
 ########## User inputs -----------
 
 #### Setting up directories 
 
 # Creating user numbers for each person
-UsersAll <- data.frame(userID = c(1,2), userName=c("Student","Professor Kropp"))
+UsersAll <- data.frame(userID = c(1,2), userName=c("Student lab","Professor Kropp"))
 
 
+#most recent tomst download
+#assumes downloading all data
+TomstD <- "07_28_2021"
 
 # File path for meter data
-DirMeter <- c("Insert lab file path here",
+DirMeter <- c("c:/Google Drive/research/projects/Data/campus_weather/METER/CSV",
              "E:/Google Drive/research/projects/Data/campus_weather/METER/CSV")
 
-DirMeterQ <- c("Insert lab file path here",
+DirMeterQ <- c("c:/Google Drive/research/projects/Data/campus_weather/METER/field_qa",
               "E:/Google Drive/research/projects/Data/campus_weather/METER/field_qa")
- 
+
+DirTOMST <- c(paste0("c:/Google Drive/research/projects/Data/campus_weather/TOMST/",TomstD),
+              paste0("E:/Google Drive/research/projects/Data/campus_weather/TOMST/",TomstD)) 
 # File path to save final data
 DirFinal <- c("Insert lab file path here",
               "E:/Google Drive/research/projects/Data/campus_weather/OUT")
+
+
 # Secondary File path to save final data
 DirFinal2 <- c("Insert lab file path here",
               "K:\\Environmental_Studies\\hkropp\\Data\\weather\\Meter")
@@ -116,6 +123,88 @@ plot(MeterTableO1$DY, MeterTableO1$YLevel,type="l")
 
 
 tail(MeterTableO1)
+
+############################
+########## TOMST-----------
+#get files
+
+tomstFiles <- list.files(DirTOMST)
+
+TOMSTSensor <- data.frame(SN= c(91201802,
+                                91200065,
+                                94207592,
+                                94214744,
+                                94214743),
+                          Height = c(0.25,0.5,0,0,0),
+                          location=c("weather",
+                                     "weather",
+                                     "weather",
+                                     "removal",
+                                     "control" ))
+
+#read in files
+TMS1 <-  read.csv(paste0(DirTOMST[user], "/",tomstFiles[grep(paste0(TOMSTSensor$SN[3]),tomstFiles)]),
+                       sep=";",header=FALSE)
+TMS2 <-  read.csv(paste0(DirTOMST[user], "/",tomstFiles[grep(paste0(TOMSTSensor$SN[4]),tomstFiles)]),
+                  sep=";",header=FALSE)
+TMS3 <-  read.csv(paste0(DirTOMST[user], "/",tomstFiles[grep(paste0(TOMSTSensor$SN[5]),tomstFiles)]),
+                  sep=";",header=FALSE)
+#tms temps:  -6, +2 and +15cm
+TMScols <- c("record","date","tz","Tm6","T2","T15","SM","shake","errFlag")
+
+colnames(TMS1) <- TMScols
+colnames(TMS2) <- TMScols
+colnames(TMS3) <- TMScols
+
+TMS1$dateF <- ymd_hm(TMS1$date)
+TMS1$estD <- with_tz(TMS1$dateF,tzone="America/New_York" )
+
+TMS2$dateF <- ymd_hm(TMS2$date)
+TMS2$estD <- with_tz(TMS2$dateF,tzone="America/New_York" )
+
+TMS3$dateF <- ymd_hm(TMS3$date)
+TMS3$estD <- with_tz(TMS3$dateF,tzone="America/New_York" )
+
+
+TMS1$location <- rep("weather",nrow(TMS1))
+TMS2$location <- rep("removal",nrow(TMS2))
+TMS3$location <- rep("control",nrow(TMS3))
+
+TMSbind <- rbind(TMS1,TMS2,TMS3)
+
+#omit error flag data
+TMSAll <- TMSbind[TMSbind$errFlag != 16, ]
+
+#correct soil moisture
+#use loam until can confirm with geology
+TMSAll$SM.cor <- (-0.00000005*(TMSAll$SM^2)) + (0.000398*TMSAll$SM) -0.291
+
+TMSAll$SM.c <- ifelse(TMSAll$SM.cor <= 0.01,NA,TMSAll$SM.cor)
+
+ggplot(TMSAll, aes(estD ,SM.c, col=location))+
+  geom_point()+
+  geom_line()
+
+
+ggplot(TMSAll[TMSAll$location != "weather",], aes(estD ,SM.c, col=location))+
+  geom_point()+
+  geom_line()
+
+
+ggplot(TMSAll[TMSAll$location != "weather",], aes(estD ,Tm6, col=location))+
+  geom_point()+
+  geom_line()
+#removal
+TMS2Q <-  TMS2[TMS2$errFlag != 16, ]
+#control
+TMS3Q <-  TMS3[TMS3$errFlag != 16, ]
+TMScomp <- inner_join(TMS2Q, TMS3Q, by="estD")
+TMScomps <- data.frame(estD= TMScomp$estD,
+                       diffT= TMScomp$Tm6.x-TMScomp$Tm6.y)
+#nned to fiter for installation
+ggplot(TMScomps[TMScomps$diffT <3 & TMScomps$diffT >-2,], aes(estD ,diffT))+
+  geom_point()+
+  geom_line()
 
 #### Save final tables ####
 
